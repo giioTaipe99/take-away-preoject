@@ -93,6 +93,7 @@ export default {
 }
 </script>
 <template>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <v-layout class="main container">
         <v-app-bar>
             <v-app-bar-title>T A K E A W A Y</v-app-bar-title>
@@ -118,10 +119,15 @@ export default {
                                     <v-parallax style="margin-left: 15px;">{{ product.price }}€ </v-parallax>
                                 </v-sheet>
                                 <v-card-actions>
-                                    <v-btn @click="openModalEditor(product)" color="primary">Editar</v-btn>
-                                    <v-btn @click="deleteProductSelected(product.id, product.name)"
-                                        color="error">Eliminar</v-btn>
-                                    <v-btn @click="showDetails(product.id)" color="yellow">Info</v-btn>
+                                    <v-btn @click="openModalEditor(product)" style="font-size: 25px;">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </v-btn>
+                                    <v-btn @click="deleteProductSelected(product.id, product.name)" style="font-size: 25px;">
+                                        <i class="bi bi-trash3-fill"></i>
+                                    </v-btn>
+                                    <v-btn @click="showDetails(product.id)" style="font-size: 25px;">
+                                        <i class="bi bi-info-circle"></i>
+                                    </v-btn>
                                 </v-card-actions>
                                 <v-expand-transition v-if="details && product.id == idProduct">
                                     <v-card>
@@ -138,7 +144,7 @@ export default {
                             </v-card>
                         </v-col>
                         <v-card
-                            style="width: 360px; height: 323px; display: flex; align-items: center; justify-content: center; position: relative; top: 10px; margin-left: 12px;">
+                            style="width: 360px; height: 345px; display: flex; align-items: center; justify-content: center; position: relative; top: 10px; margin-left: 12px;">
                             <v-sheet>
                                     <v-btn @click="openAddProductModal" icon
                                     style="font-size: 55px; width: 80px; height: 80px;">

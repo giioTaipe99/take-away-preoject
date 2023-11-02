@@ -9,6 +9,10 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const cors = require("cors");
 const { verify } = require('crypto'); //???
+const http = require('http');
+const server = http.createServer(app);
+const {Server} = require("socket.io");
+const io = new Server(server);
 const PORT = 3001;
 
 app.use(cors());
@@ -346,6 +350,7 @@ app.get("/getOrders", (req, res) => {
         .then((data) => {
             const orders = data;
             res.json(orders)
+        
         })
         .catch((err) => {
             console.log(err);
@@ -417,6 +422,7 @@ app.put("/putProductes/:id", async (req, res) => {
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
+
 
 
 
