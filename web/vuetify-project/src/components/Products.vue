@@ -53,7 +53,7 @@ export default {
         },
         async modifyProduct() {
             const timestamp = new Date().getTime(); // crear marca de tiempo
-            const responseUpdate = await updateProduct(this.modifiedProduct)
+            await updateProduct(this.modifiedProduct)
             this.modalEditor = false;
             const updatedProductIndex = this.products.findIndex(p => p.id === this.modifiedProduct.id);
             this.modifiedProduct.imageUrl = `${this.modifiedProduct.imageUrl}?timestamp=${timestamp}`; // crea una nueva URL de imagen con un parámetro de marca de tiempo único
@@ -78,7 +78,7 @@ export default {
 
             // Cierra el modal después de agregar el producto
             this.modalAddProduct = false;
-            const responseAdd = await addProduct(this.newProduct);
+            await addProduct(this.newProduct);
             this.products = await getProductes();
         },
         async showPage() {
