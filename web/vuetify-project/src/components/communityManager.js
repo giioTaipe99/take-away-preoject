@@ -63,3 +63,9 @@ export async function getUsers(){
     console.log(users);
     return users;
 }
+export async function deleteOrder(OrderId) {
+    const response = await fetch(`http://localhost:3001/deleteOrder/${OrderId}`, {
+        method: 'DELETE',
+    });
+}
+

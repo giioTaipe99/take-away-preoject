@@ -3,5 +3,5 @@
 </template>
 
 <script setup>
-  import Web from '@/components/Web.vue'
+  import Web from '@/components/Products.vue'
 </script>
