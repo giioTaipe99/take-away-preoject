@@ -53,7 +53,7 @@ function GetConnection() {
 function GetUsuarios() {
     return new Promise(async (resolve, reject) => {
         const connection = await GetConnection();
-        var sql = "SELECT * FROM users;";
+        let sql = "SELECT * FROM users;";
         connection.execute(sql, function (err, result) {
 
             if (err) {
@@ -71,8 +71,8 @@ function GetUsuarios() {
 function InsertProducts(name, description, price, stock) {
     return new Promise(async (resolve, reject) => {
         const connection = await GetConnection();
-        var sql = "INSERT INTO products (name, description, price, stock) VALUES (?, ?, ?, ?);";
-        var values = [name, description, price, stock];
+        let sql = "INSERT INTO products (name, description, price, stock) VALUES (?, ?, ?, ?);";
+        let values = [name, description, price, stock];
 
         connection.execute(sql, values, function (err, result) {
             if (err) {
@@ -84,11 +84,50 @@ function InsertProducts(name, description, price, stock) {
         });
     });
 }
+
+//Insert Order
+function InsertOrder(products) {
+    return new Promise(async (resolve, reject) => {
+        const connection = await GetConnection();
+        let totalPrice = 0;
+        products.forEach(product => {
+            totalPrice += product.price;
+        });
+
+        let orderSql = `INSERT INTO orders (user_id, quantity, total_price, order_status) VALUES (?, ?, ?, ?);`;
+        let orderValues = [req.session.userId, products.length, totalPrice, 1];
+
+        connection.execute(orderSql, orderValues, function (err, orderResult) {
+            if (err) {
+                reject(err);
+            } else {
+                let orderId = orderResult.insertId;
+                let containSql = "INSERT INTO contains (id_orders, id_products) VALUES ";
+                let containValues = [];
+                products.forEach(product => {
+                    containSql += "(?, ?),";
+                    containValues.push(orderId, product.id);
+                });
+                containSql = containSql.slice(0, -1) + ";";
+
+                connection.execute(containSql, containValues, function (err, containResult) {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        connection.release();
+                        resolve(orderId); // Devolver el ID de la orden insertada
+                    }
+                });
+            }
+        });
+    });
+}
+
 //Realizamos updates de los productes con su id
 function UpdateProducts(id, name, description, price, stock) {
     return new Promise(async (resolve, reject) => {
         const connection = await GetConnection();
-        var sql = "UPDATE products SET name = '" + name + "', description = '" + description + "', price = " + price + ", stock = " + stock + " WHERE id = " + id + ";";
+        let sql = "UPDATE products SET name = '" + name + "', description = '" + description + "', price = " + price + ", stock = " + stock + " WHERE id = " + id + ";";
         connection.execute(sql, function (err, result) {
             if (err) {
                 reject(err);
@@ -105,7 +144,9 @@ function UpdateProducts(id, name, description, price, stock) {
 function UpdateOrders(id, orderStatus) {
     return new Promise(async (resolve, reject) => {
         const connection = await GetConnection();
-        var sql = `UPDATE orders 
+
+        let sql = `UPDATE orders 
+
                    SET order_status = '${orderStatus}' 
                    WHERE id = ${id};`;
 
@@ -113,7 +154,7 @@ function UpdateOrders(id, orderStatus) {
             if (err) {
                 reject(err);
             } else {
-                var selectSql = `SELECT * FROM orders WHERE id = ${id};`;
+                let selectSql = `SELECT * FROM orders WHERE id = ${id};`;
                 connection.query(selectSql, function (err, rows, fields) {
                     if (err) {
                         reject(err);
@@ -131,7 +172,7 @@ function UpdateOrders(id, orderStatus) {
 function GetProducts() {
     return new Promise(async (resolve, reject) => {
         const connection = await GetConnection();
-        var sql = "SELECT * FROM products;";
+        let sql = "SELECT * FROM products;";
         connection.execute(sql, function (err, result) {
 
             if (err) {
@@ -150,7 +191,7 @@ function GetProducts() {
 function GetStatus(id) {
     return new Promise(async (resolve, reject) => {
         const connection = await GetConnection();
-        var sql = "SELECT * FROM orders WHERE user_id = " + id + ";";
+        let sql = "SELECT * FROM orders WHERE user_id = " + id + ";";
         connection.execute(sql, function (err, result) {
             if (err) {
                 console.log(err);
@@ -166,7 +207,7 @@ function GetStatus(id) {
 function GetOrdersByStatus(status_id) {
     return new Promise(async (resolve, reject) => {
         const connection = await GetConnection();
-        var sql = `SELECT o.id as id, GROUP_CONCAT(p.name) as products, o.total_price, o.order_status, o.updated_at as dateUpdated
+        let sql = `SELECT o.id as id, GROUP_CONCAT(p.name) as products, o.total_price, o.order_status, o.updated_at as dateUpdated
         FROM orders as o 
         INNER JOIN contains as c ON o.id = c.id_orders 
         INNER JOIN products as p ON c.id_products = p.id 
@@ -188,7 +229,7 @@ function GetOrdersByStatus(status_id) {
 function DeclineOrder(id) {
     return new Promise(async (resolve, reject) => {
         const connection = await GetConnection();
-        var sql = "DELETE FROM orders WHERE id = " + id + ";";
+        let sql = "DELETE FROM orders WHERE id = " + id + ";";
         connection.execute(sql, function (err, result) {
             if (err) {
                 reject(err);
@@ -205,7 +246,7 @@ function DeclineOrder(id) {
 function DeleteContains(idOrder){
     return new Promise(async (resolve, reject) => {
         const connection = await GetConnection();
-        var sql = "DELETE FROM contains WHERE id_orders = " + idOrder + ";";
+        let sql = "DELETE FROM contains WHERE id_orders = " + idOrder + ";";
         connection.execute(sql, function (err, result) {
             if (err) {
                 reject(err);
@@ -222,7 +263,7 @@ function DeleteContains(idOrder){
 function DeleteProduct(id) {
     return new Promise(async (resolve, reject) => {
         const connection = await GetConnection();
-        var sql = "DELETE FROM products WHERE id = " + id + ";";
+        let sql = "DELETE FROM products WHERE id = " + id + ";";
         connection.execute(sql, function (err, result) {
             if (err) {
                 reject(err);
@@ -439,6 +480,20 @@ app.post("/postProductes", async (req, res) => {
     addImage(imageFile, name, productId);
     // Enviar la respuesta con el producto y el número total de productos
     res.json({ product: productObject });
+});
+//Post de los pedidos
+app.post("/postOrders", async (req, res) => {
+    const orderObject = req.body;
+    const products = orderObject.products;
+    console.log(products);
+    try {
+        // Insertar una nueva orden con los productos asociados
+        const orderId = await InsertOrder(products);
+        res.json({ orderId: orderId, message: "Order inserted successfully." });
+    } catch (error) {
+        console.error("Error inserting order:", error);
+        res.status(500).json({ error: "An error occurred while inserting the order." });
+    }
 });
 //Eliminamos un producto seleccionando su id
 app.delete("/delete/:id/:name", async (req, res) => {
