@@ -144,7 +144,9 @@ function UpdateProducts(id, name, description, price, stock) {
 function UpdateOrders(id, orderStatus) {
     return new Promise(async (resolve, reject) => {
         const connection = await GetConnection();
+
         let sql = `UPDATE orders 
+
                    SET order_status = '${orderStatus}' 
                    WHERE id = ${id};`;
 
