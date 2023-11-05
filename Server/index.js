@@ -8,10 +8,13 @@ const fs = require('fs');
 const path = require('path');
 const bodyParser = require('body-parser');
 const cors = require("cors");
-const http = require('http');
-const server = http.createServer(app);
-const {Server} = require("socket.io");
-const io = new Server(server);
+const http = require('http').Server(app);
+const io = require('socket.io')(http, {
+    cors: {
+        origin: '*', // Permite que cualquier cliente se conecte al socket
+        methods: ["GET", "POST", "PUT", "DELETE"], // Métodos permitidos
+    }
+});
 const PORT = 3001;
 
 app.use(cors());
@@ -98,6 +101,32 @@ function UpdateProducts(id, name, description, price, stock) {
         });
     });
 }
+// Update de los pedidos
+function UpdateOrders(id, orderStatus) {
+    return new Promise(async (resolve, reject) => {
+        const connection = await GetConnection();
+        var sql = `UPDATE orders 
+                   SET order_status = '${orderStatus}' 
+                   WHERE id = ${id};`;
+
+        connection.execute(sql, function (err, result) {
+            if (err) {
+                reject(err);
+            } else {
+                var selectSql = `SELECT * FROM orders WHERE id = ${id};`;
+                connection.query(selectSql, function (err, rows, fields) {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        connection.release();
+                        resolve(rows[0]); // Devuelve el primer resultado, ya que se espera que solo haya una fila con el ID dado
+                        console.log("1 record updated");
+                    }
+                });
+            }
+        });
+    });
+}
 //Consulta para recoger todos los datos
 function GetProducts() {
     return new Promise(async (resolve, reject) => {
@@ -134,10 +163,16 @@ function GetStatus(id) {
     })
 }
 //Consultamos todos los pedidos
-function GetAllOrders() {
+function GetOrdersByStatus(status_id) {
     return new Promise(async (resolve, reject) => {
         const connection = await GetConnection();
-        var sql = "SELECT O.id_order, O.order_status, GROUP_CONCAT(P.name) AS products, SUM(P.price) AS total_price FROM (SELECT DISTINCT id AS id_order, order_status AS order_status FROM orders) AS O LEFT JOIN contains AS CO ON O.id_order = CO.id_orders LEFT JOIN products AS P ON CO.id_products = P.id GROUP BY O.id_order, O.order_status;";
+        var sql = `SELECT o.id as id, GROUP_CONCAT(p.name) as products, o.total_price, o.order_status, o.updated_at as dateUpdated
+        FROM orders as o 
+        INNER JOIN contains as c ON o.id = c.id_orders 
+        INNER JOIN products as p ON c.id_products = p.id 
+        WHERE o.order_status = ${status_id} 
+        GROUP BY o.id
+        ORDER BY o.updated_at DESC;`;
         connection.execute(sql, function (err, result) {
             if (err) {
                 console.log(err);
@@ -281,8 +316,29 @@ async function GetIdUser(username) {
     }
 }
 //Conexcion con el servidor
-app.listen(PORT, () => {
+http.listen(PORT, () => {
     console.log("Server  =>" + PORT);
+});
+// Conexion con el socket
+io.on('connection', (socket) => {
+    console.log('Usuario conectado');
+
+    // Evento para actualizar la orden
+    socket.on('updateOrder', async (data) => {
+        try {
+            const { id, orderStatus } = data;
+            // Lógica para actualizar la orden
+            const updatedOrder = await UpdateOrders(id, orderStatus);
+            // Emite el resultado actualizado a todos los clientes conectados
+            if (orderStatus === 4){
+                await DeleteContains(id);
+                await DeclineOrder(id);
+            }   
+            io.emit('orderUpdated', updatedOrder);
+        } catch (error) {
+            console.error('Error al actualizar la orden:', error);
+        }
+    });
 });
 //Devolvemos los usuarios registrados
 app.get("/getUsers", (req, res) => {
@@ -344,17 +400,17 @@ app.get("/getProducts", (req, res) => {
         })
 });
 //Devolvemos todos los pedidos
-app.get("/getOrders", (req, res) => {
-    GetAllOrders()
+app.get("/getOrders/:status_id", (req, res) => {
+    const status_id = parseInt(req.params.status_id);
+    GetOrdersByStatus(status_id)
         .then((data) => {
             const orders = data;
             res.json(orders)
-        
         })
         .catch((err) => {
             console.log(err);
         })
-})
+});
 //Eliminamos un pedido
 app.delete("/deleteOrder/:id", async (req, res) => {
     try {
