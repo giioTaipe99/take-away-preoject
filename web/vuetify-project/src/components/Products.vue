@@ -1,9 +1,9 @@
 <script setup>
-import { getProductes, updateProduct, deleteProduct, addProduct, getOrders} from './communityManager';
+import { getProductes, updateProduct, deleteProduct, addProduct} from './communityManager';
 import Orders from './Orders.vue';
 import Preparation from './OrderPreparation.vue';
 import Summary from './SummaryOrders.vue';
-
+import socket from '../plugins/socket.js';
 </script>
 <script>
 export default {
@@ -15,7 +15,6 @@ export default {
     data() {
         return {
             products: [],
-            orders: [],
             users: [],
             modalEditor: false,
             modalAddProduct: false,
@@ -42,6 +41,7 @@ export default {
     async created() {
         this.products = await getProductes();
         console.log(this.products)
+        socket.connect();
     },
     methods: {
         openAddProductModal() {
@@ -81,10 +81,6 @@ export default {
             await addProduct(this.newProduct);
             this.products = await getProductes();
         },
-        async showPage() {
-                this.orders = await getOrders();
-                console.log('Orders:', this.orders);
-        },
         showDetails(product) {
             this.idProduct = product;
             this.details = !this.details;
@@ -98,7 +94,7 @@ export default {
         <v-app-bar>
             <v-app-bar-title>T A K E A W A Y</v-app-bar-title>
             <v-btn @click="this.currentPage = 'page1';">Productes</v-btn>
-            <v-btn @click="this.currentPage = 'page2'; showPage()">Recepcio de comandes</v-btn>
+            <v-btn @click="this.currentPage = 'page2';">Recepcio de comandes</v-btn>
             <v-btn @click="this.currentPage = 'page3';">Preparacio de comandes</v-btn>
             <v-btn @click="this.currentPage = 'page4'">Resum de comandes</v-btn>
         </v-app-bar>

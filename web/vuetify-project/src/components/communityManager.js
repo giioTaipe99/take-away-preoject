@@ -39,7 +39,7 @@ export async function addProduct(newProduct) {
         formData.append('description', newProduct.description);
         formData.append('stock', newProduct.stock);
         formData.append('image', newProduct.image[0])
-        const response = await fetch('http://localhost:3001/postProductes', {
+        await fetch('http://localhost:3001/postProductes', {
             method: 'POST',
             body: formData,
         });
@@ -50,10 +50,9 @@ export async function addProduct(newProduct) {
     }
 }
 
-export async function getOrders(){
-    const response = await fetch('http://localhost:3001/getOrders');
+export async function getOrders(status_id){
+    const response = await fetch(`http://localhost:3001/getOrders/${status_id}`);
     const orders = await response.json();
-    console.log(orders);
     return orders;
 }
 
@@ -64,7 +63,7 @@ export async function getUsers(){
     return users;
 }
 export async function deleteOrder(OrderId) {
-    const response = await fetch(`http://localhost:3001/deleteOrder/${OrderId}`, {
+    await fetch(`http://localhost:3001/deleteOrder/${OrderId}`, {
         method: 'DELETE',
     });
 }
