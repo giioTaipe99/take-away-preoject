@@ -41,7 +41,9 @@ export default {
       socket.on("orderUpdated", (updatedOrder) => {
         console.log("Orden actualizada:", updatedOrder);
         const indexOrderModified = this.orders.findIndex((order) => order.id === orderId);
-        this.orders[indexOrderModified] = updatedOrder;
+        if (indexOrderModified !== -1) {
+          this.orders.splice(indexOrderModified, 1);
+        }
       });
     },
     toggleDetails(order) {
