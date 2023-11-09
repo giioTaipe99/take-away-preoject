@@ -50,13 +50,13 @@ export async function addProduct(newProduct) {
     }
 }
 
-export async function getOrders(status_id){
+export async function getOrders(status_id) {
     const response = await fetch(`http://localhost:3001/getOrders/${status_id}`);
     const orders = await response.json();
     return orders;
 }
 
-export async function getUsers(){
+export async function getUsers() {
     const response = await fetch('http://localhost:3001/getUsers');
     const users = await response.json();
     console.log(users);
@@ -66,5 +66,17 @@ export async function deleteOrder(OrderId) {
     await fetch(`http://localhost:3001/deleteOrder/${OrderId}`, {
         method: 'DELETE',
     });
+}
+export async function getPython() {
+    const response = await fetch('http://localhost:3001/python',
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', }
+        })
+    const responseData = await response.json();
+    const { productImage, ordersImage } = responseData;
+
+    return { productImage, ordersImage };
+
 }
 

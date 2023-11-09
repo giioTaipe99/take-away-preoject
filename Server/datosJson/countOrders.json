@@ -1,0 +1,14 @@
+[
+  {
+    "dia_semana": 3,
+    "total_orders": 1
+  },
+  {
+    "dia_semana": 5,
+    "total_orders": 3
+  },
+  {
+    "dia_semana": 7,
+    "total_orders": 1
+  }
+]

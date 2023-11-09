@@ -36,7 +36,7 @@ export default {
         return "green"; // Color verde si han pasado menos de 5 segundos
       }
     },
-    markReadyForPickup(orderId) {
+    async markReadyForPickup(orderId) {
       socket.emit("updateOrder", { id: orderId, orderStatus: 3 });
       socket.on("orderUpdated", (updatedOrder) => {
         console.log("Orden actualizada:", updatedOrder);

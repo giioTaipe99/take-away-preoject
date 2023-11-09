@@ -1,0 +1,18 @@
+[
+  {
+    "id_products": 1,
+    "cantidad_total_productos": 3
+  },
+  {
+    "id_products": 2,
+    "cantidad_total_productos": 3
+  },
+  {
+    "id_products": 4,
+    "cantidad_total_productos": 1
+  },
+  {
+    "id_products": 5,
+    "cantidad_total_productos": 1
+  }
+]

@@ -4,7 +4,8 @@ const express = require('express');
 const session = require('express-session');
 const fileUpload = require('express-fileupload');
 const app = express();
-const fs = require('fs');
+const fs = require('fs').promises;
+const { spawn } = require('child_process');
 const path = require('path');
 const bodyParser = require('body-parser');
 const cors = require("cors");
@@ -29,6 +30,8 @@ app.use(
 );
 app.use(fileUpload());
 app.use('/images', express.static(path.join(__dirname, 'images')));
+app.use('/imgPy', express.static(path.join(__dirname, 'imgPy')));
+app.use('/datosJson', express.static(path.join(__dirname, 'datosJson')));
 //Datos para la conexion a la base de datos
 const pool = mysql.createPool({
     connectionLimit: 10, // ajusta según tus necesidades
@@ -95,25 +98,29 @@ function InsertOrder(products) {
         });
 
         let orderSql = `INSERT INTO orders (user_id, quantity, total_price, order_status) VALUES (?, ?, ?, ?);`;
-        let orderValues = [req.session.userId, products.length, totalPrice, 1];
-
+        let orderValues = [2, products.length, totalPrice, 1];
         connection.execute(orderSql, orderValues, function (err, orderResult) {
             if (err) {
                 reject(err);
             } else {
+
                 let orderId = orderResult.insertId;
                 let containSql = "INSERT INTO contains (id_orders, id_products) VALUES ";
                 let containValues = [];
+
                 products.forEach(product => {
                     containSql += "(?, ?),";
                     containValues.push(orderId, product.id);
                 });
+                console.log(containSql);
                 containSql = containSql.slice(0, -1) + ";";
 
                 connection.execute(containSql, containValues, function (err, containResult) {
                     if (err) {
+
                         reject(err);
                     } else {
+
                         connection.release();
                         resolve(orderId); // Devolver el ID de la orden insertada
                     }
@@ -187,8 +194,69 @@ function GetProducts() {
     });
 
 }
+//Consulta para recoger todos los datos
+function GetCountProducts() {
+    return new Promise(async (resolve, reject) => {
+        const connection = await GetConnection();
+        let sql = "SELECT c.id_products, COUNT(c.id_products) as cantidad_total_productos FROM orders as o INNER JOIN contains as c ON o.id = c.id_orders GROUP BY c.id_products;";
+        connection.execute(sql, function (err, result) {
+
+            if (err) {
+                reject(err);
+            }
+            else {
+                connection.release();
+                resolve(result);
+            }
+
+        });
+    });
+
+}
+//Guardamos los productos en un fichero
+async function writeFileCountProducts() {
+    const countProducts = await GetCountProducts();
+    const jsonString = JSON.stringify(countProducts, null, 2);
+    fs.writeFile('countProducts.json', jsonString, (err) => {
+        if (err) {
+            console.error("Error al escribir en el archivo:", err);
+        } else {
+            console.log("Archivo JSON creado exitosamente.");
+        }
+    });
+}
+//Consulta para saber las ordenes que se realizan a la semana
+async function GetOrdersByDay() {
+    return new Promise(async (resolve, reject) => {
+        const connection = await GetConnection();
+        let sql = "SELECT DAYOFWEEK(created_at) as dia_semana, COUNT(id) as total_orders FROM orders GROUP BY dia_semana;";
+        connection.execute(sql, function (err, result) {
+
+            if (err) {
+                reject(err);
+            }
+            else {
+                connection.release();
+                resolve(result);
+            }
+
+        });
+    });
+}
+//Guardamos los pedidos de los dias
+async function writeFileCountOrders() {
+    const countOrders = await GetOrdersByDay();
+    const jsonString = JSON.stringify(countOrders, null, 2);
+    fs.writeFile('countOrders.json', jsonString, (err) => {
+        if (err) {
+            console.error("Error al escribir en el archivo:", err);
+        } else {
+            console.log("Archivo JSON creado exitosamente.");
+        }
+    });
+}
 //Consultamos los pedidos de cada usuario con su id 
-function GetStatus(id) {
+function GetOrderById(id) {
     return new Promise(async (resolve, reject) => {
         const connection = await GetConnection();
         let sql = "SELECT * FROM orders WHERE user_id = " + id + ";";
@@ -243,7 +311,7 @@ function DeclineOrder(id) {
     });
 }
 //Para eliminar un pedido primero debemos eliminar donde hace referencia como foreing key
-function DeleteContains(idOrder){
+function DeleteContains(idOrder) {
     return new Promise(async (resolve, reject) => {
         const connection = await GetConnection();
         let sql = "DELETE FROM contains WHERE id_orders = " + idOrder + ";";
@@ -371,10 +439,10 @@ io.on('connection', (socket) => {
             // Lógica para actualizar la orden
             const updatedOrder = await UpdateOrders(id, orderStatus);
             // Emite el resultado actualizado a todos los clientes conectados
-            if (orderStatus === 4){
+            if (orderStatus === 4) {
                 await DeleteContains(id);
                 await DeclineOrder(id);
-            }   
+            }
             io.emit('orderUpdated', updatedOrder);
         } catch (error) {
             console.error('Error al actualizar la orden:', error);
@@ -406,7 +474,7 @@ app.post("/verify", async (req, res) => {
 app.get("/getStatus", (req, res) => {
     const id = req.session.userId;
     console.log(req.session.userId);
-    GetStatus(id)
+    GetOrderById(id)
         .then((data) => {
             const status = data;
             res.json(status);
@@ -426,8 +494,8 @@ app.get("/getProducts", (req, res) => {
                 // Construir el nombre de la imagen
                 const imageName = `${product.name.replace(/\s+/g, '-')}${product.id}`;
 
-                const imageUrl = `http://localhost:3001/images/${imageName}.jpg`;
-
+                const imageUrl = `http://192.168.1.74:3001/images/${imageName}.jpg`;
+                console.log(imageUrl);
                 return {
                     ...product,
                     imageUrl,
@@ -484,12 +552,16 @@ app.post("/postProductes", async (req, res) => {
 //Post de los pedidos
 app.post("/postOrders", async (req, res) => {
     const orderObject = req.body;
-    const products = orderObject.products;
+    const products = orderObject;
     console.log(products);
     try {
         // Insertar una nueva orden con los productos asociados
         const orderId = await InsertOrder(products);
+        // Guardar el contador de productos y pedidos en un archivo JSON
+        writeFileCountProducts();
+        writeFileCountOrders();
         res.json({ orderId: orderId, message: "Order inserted successfully." });
+
     } catch (error) {
         console.error("Error inserting order:", error);
         res.status(500).json({ error: "An error occurred while inserting the order." });
@@ -532,6 +604,46 @@ app.put("/putProductes/:id", async (req, res) => {
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
+
+app.post("/python", (req, res) => {
+
+    // Ejecutar script de Python para generar las gráficas
+    const processoPython = spawn("python3", ["estadisticas.py"]);
+
+    // Manejar la salida del script Python
+    processoPython.stdout.on("data", (data) => {
+        console.log("Resultado del script");
+    });
+
+    let hasResponded = false;
+
+    // Manejar errores del script Python
+    processoPython.stderr.on("data", (error) => {
+        const errorMessage = error.toString();
+        console.error("Error en el script:", errorMessage);
+
+        if (!hasResponded) {
+            res.status(500).json({ error: errorMessage });
+            hasResponded = true;
+        }
+    });
+
+    // Finalizar la ejecución del script Python
+    processoPython.on("close", (code) => {
+        console.log("PROCESO DE PYTHON FINALIZADO");
+
+        if (!hasResponded) {
+            // Enviar rutas de archivos al cliente
+            res.json({
+                productImage: 'http://192.168.1.74:3001/imgPy/product.png',
+                ordersImage: 'http://192.168.1.74:3001/imgPy/orders.png',
+            });
+            hasResponded = true;
+        }
+
+    });
+});
+
 
 
 
